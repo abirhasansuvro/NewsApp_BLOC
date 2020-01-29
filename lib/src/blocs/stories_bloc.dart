@@ -9,14 +9,15 @@ import '../resources/repository.dart';
 class Stories{
   final _repository=Repository();
   final _topIds=PublishSubject <List<int>>(); 
-  final _items=BehaviorSubject<int>();
+  final _itemsOutput=BehaviorSubject<Map<int,Future<ItemModel>>>();
+  final _itemsFetcher=PublishSubject<int>();
 
-  Observable<Map<int,Future<ItemModel>>> items;
 
   Observable<List<int>> get topIds=>_topIds.stream;
+  Observable<Map<int,Future<ItemModel>>> get items=>_itemsOutput.stream;
 
   Stories(){
-    items=_items.stream.transform(_itemTransformer());
+    _itemsFetcher.stream.transform(_itemTransformer()).pipe(_itemsOutput);
   }
 
   fetchTopIds() async{
@@ -24,7 +25,8 @@ class Stories{
     _topIds.sink.add(_ids);
   }
 
-  Function(int) get fetchItm=>_items.sink.add;
+  Function(int) get fetchItm=>_itemsFetcher.sink.add;
+  
   _itemTransformer(){
     return ScanStreamTransformer(
       (Map<int,Future<ItemModel>>cache,int id,index){
@@ -35,8 +37,13 @@ class Stories{
     );
   }
 
+  clearCache(){
+    return _repository.clearCache();
+  }
+
   dispose(){
     _topIds.close();
-    _items.close();
+    _itemsOutput.close();
+    _itemsFetcher.close();
   }
 }
